@@ -1,0 +1,15 @@
+apply plugin: 'java'
+apply plugin: 'application'
+apply plugin: 'idea'
+
+mainClassName = "com.whiletime.linyeah.Main"
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    compile 'com.itextpdf:itextpdf:5.5.6'
+    compile 'commons-net:commons-net:3.3'
+}
