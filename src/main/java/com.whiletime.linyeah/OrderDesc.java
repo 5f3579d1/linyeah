@@ -43,7 +43,7 @@ public class OrderDesc {
     private List<Product> products;
 
     public void setCustSequence(String custSequence) {
-        this.custSequence = PREFIX + custSequence;
+        this.custSequence = custSequence;
     }
 
     public void setProducts(List<Product> products) {
@@ -53,6 +53,8 @@ public class OrderDesc {
 }
 
 class Product {
+
+    private String name;
 
     @XmlElement(name = "Sequence")
     private int sequence;
@@ -95,7 +97,7 @@ class Product {
      * 单面:0
      * 双面:1
      */
-    @XmlElement(name = "CovMatriCode")
+    @XmlElement(name = "CovSinOrDblSide")
     private String covSinOrDblSide = "1";
 
     @XmlElement(name = "CovpageColor")
@@ -115,7 +117,7 @@ class Product {
     @XmlElement(name = "InnMatriCode")
     private String innMatriCode = "ZZ0004";
 
-    @XmlElement(name = "InnMatriCode")
+    @XmlElement(name = "InnSinOrDblSide")
     private String innSinOrDblSide = "1";
 
     /**
@@ -150,8 +152,12 @@ class Product {
     @XmlElement(name = "InnerFile")
     private String innerFile;
 
-    @XmlElement(name = "InnerFileSize", nillable = true)
+    @XmlElement(name = "InnerFileSize")
     private long innerFileSize;
+
+    public void setName(String name) {
+        this.name = name;
+    }
 
     public void setSequence(int sequence) {
         this.sequence = sequence;
@@ -162,7 +168,7 @@ class Product {
     }
 
     public void setCoverFile(String coverFile) {
-        this.coverFile = OrderDesc.PREFIX + coverFile + "_cover.pdf";
+        this.coverFile = OrderDesc.PREFIX + coverFile.substring(0, coverFile.length() - 4) + "_cover.pdf";
     }
 
     public void setCoverFileSize(long coverFileSize) {
@@ -170,11 +176,16 @@ class Product {
     }
 
     public void setInnerFile(String innerFile) {
-        this.innerFile = OrderDesc.PREFIX + innerFile + "_inner.pdf";
+        this.innerFile = OrderDesc.PREFIX + innerFile.substring(0, innerFile.length() - 4) + "_inner.pdf";
     }
 
     public void setInnerFileSize(long innerFileSize) {
         this.innerFileSize = innerFileSize;
+    }
+
+    @Override
+    public String toString() {
+        return sequence + "：" + name;
     }
 
 }

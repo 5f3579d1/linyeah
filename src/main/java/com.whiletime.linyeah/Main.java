@@ -3,12 +3,13 @@ package com.whiletime.linyeah;
 import com.itextpdf.text.pdf.PdfReader;
 
 import javax.swing.*;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.StyledDocument;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -18,61 +19,92 @@ import java.util.List;
 
 /**
  * Main class
+ * TODO: 套数选择
  * Created by k on 5/25/15.
  */
 public class Main extends JFrame {
 
-    //TODO: 套数选择
+    private JProgressBar pBar;
+    private StyledDocument document;
+
+    private String log;
+    Runnable updateLog = () -> {
+        try {
+            document.insertString(document.getLength(), "\n" + log, null);
+        } catch (BadLocationException e) {
+            e.printStackTrace();
+        }
+    };
+
     public Main() {
 
-        setTitle("提交订单");
-        setSize(300, 200);
-        setLocationRelativeTo(null);
-        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        JPanel basic = new JPanel();
+        basic.setLayout(new BoxLayout(basic, BoxLayout.Y_AXIS));
+        add(basic);
+
+        pBar = new JProgressBar();
+        pBar.setStringPainted(true);
+        JPanel topPanel = new JPanel(new BorderLayout(0, 0));
+        topPanel.setMaximumSize(new Dimension(450, 0));
+        topPanel.add(pBar);
+
+        JSeparator separator = new JSeparator();
+        separator.setForeground(Color.gray);
+        topPanel.add(separator, BorderLayout.SOUTH);
+        basic.add(topPanel);
+
+        JPanel textPanel = new JPanel(new BorderLayout());
+        textPanel.setBorder(BorderFactory.createEmptyBorder(15, 25, 15, 25));
+
+        JTextPane textPane = new JTextPane();
+        textPane.setText("选择订单目录");
+        document = textPane.getStyledDocument();
+        textPane.setEditable(false);
+        textPanel.add(new JScrollPane(textPane));
+
+        basic.add(textPanel);
+
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+
+        JButton close = new JButton("关闭");
+        close.setMnemonic(KeyEvent.VK_C);
+        close.addActionListener(event -> System.exit(0));
 
         JButton openButton = new JButton("选择目录");
-        createLayout(openButton);
+        openButton.addActionListener(event -> selectRootDirector());
+        bottom.add(openButton);
+        bottom.add(close);
+        basic.add(bottom);
 
-        openButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent event) {
-                selectRootDirector();
-            }
-        });
+        setTitle("提交订单");
+        setSize(new Dimension(450, 350));
+        setResizable(true);
+        setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        setLocationRelativeTo(null);
+
     }
-
-    private void createLayout(JComponent... arg) {
-
-        Container pane = getContentPane();
-        GroupLayout gl = new GroupLayout(pane);
-        pane.setLayout(gl);
-
-        gl.setAutoCreateContainerGaps(true);
-
-        gl.setHorizontalGroup(gl.createSequentialGroup().addComponent(arg[0]));
-
-        gl.setVerticalGroup(gl.createSequentialGroup().addComponent(arg[0]));
-    }
-
 
     private void selectRootDirector() {
         final JFileChooser fileChooser = new JFileChooser();
         fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         int returnVal = fileChooser.showOpenDialog(this);
         if (returnVal == JFileChooser.APPROVE_OPTION) {
-            start(fileChooser.getSelectedFile().getPath());
+            String path = fileChooser.getSelectedFile().getPath();
+            new Thread(() -> {
+                appendLog("当前目录：" + path);
+                start(path);
+            }).start();
         }
     }
 
-    public static void main(String[] args) {
-        EventQueue.invokeLater(new Runnable() {
+    private void appendLog(String log) {
+        this.log = log;
+        SwingUtilities.invokeLater(updateLog);
+    }
 
-            @Override
-            public void run() {
-                Main main = new Main();
-                main.setVisible(true);
-            }
-        });
+    public static void main(String[] args) {
+        Main main = new Main();
+        main.setVisible(true);
     }
 
     public void start(String path) {
@@ -86,14 +118,14 @@ public class Main extends JFrame {
 
                 if (isMultiple(userFile))
                     start(userFile);
-                else {
+                else if (userFile.isDirectory()) {
+                    appendLog("用户：" + userFile.getName());
                     if (i <= 15) {
-                        addProducts(products, userFile);
+                        addProducts(products, userFile, false);
                         i++;
                     } else {
                         i = 0;
                         submit(products);
-                        products = new ArrayList<>();
                     }
                 }
             }
@@ -101,24 +133,25 @@ public class Main extends JFrame {
         if (products.size() > 0)
             submit(products);
 
+        appendLog("完成");
     }
 
-    private void start(File userFile) {
+    private void start(File splitFile) {
 
-        File[] files = userFile.listFiles();
+        File[] files = splitFile.listFiles();
 
         int i = 0;
         List<Product> products = new ArrayList<>();
         if (files != null)
             for (File file : files) {
-                if (i <= 15) {
-                    addProducts(products, file);
-                    i++;
-                } else {
-                    i = 0;
-                    submit(products);
-                    products = new ArrayList<>();
-                }
+                if (file.isDirectory())
+                    if (i <= 15) {
+                        addProducts(products, file, true);
+                        i++;
+                    } else {
+                        i = 0;
+                        submit(products);
+                    }
             }
 
         if (products.size() > 0)
@@ -136,7 +169,8 @@ public class Main extends JFrame {
         return false;
     }
 
-    private List<Product> addProducts(List<Product> products, File userFile) {
+    private List<Product> addProducts(List<Product> products, File userFile, boolean split) {
+
         String cover = null;
         String inner = null;
         int pageNum = 0;
@@ -164,43 +198,62 @@ public class Main extends JFrame {
                     }
             }
 
-            Product product = new Product();
-            product.setSequence(products.size() + 1);
-            product.setCoverFile(cover);
-            product.setCoverFileSize(coverSize);
-            product.setInnerFile(inner);
-            product.setInnerFileSize(innerSize);
-            product.setInnpageNumber(pageNum);
-            products.add(product);
+            if (cover != null && inner != null) {
 
-            FTPHelper ftpHelper = FTPHelper.getInstance();
-            ftpHelper.connect();
-            ftpHelper.upload(userFile.getPath() + "/" + cover);
-            ftpHelper.upload(userFile.getPath() + "/" + inner);
-            ftpHelper.disconnect();
+                FTPHelper ftpHelper = FTPHelper.getInstance(pBar);
+                appendLog("上传：" + cover);
+                boolean cc = ftpHelper.upload(userFile.getPath() + "/" + cover);
+                appendLog("上传：" + inner);
+                boolean ic = ftpHelper.upload(userFile.getPath() + "/" + inner);
 
+                if (cc && ic) {
+
+                    Product product = new Product();
+                    if (split)
+                        product.setName(userFile.getParentFile().getName());
+                    else
+                        product.setName(userFile.getName());
+
+                    product.setSequence(products.size() + 1);
+                    product.setCoverFile(cover);
+                    product.setCoverFileSize(coverSize);
+                    product.setInnerFile(inner);
+                    product.setInnerFileSize(innerSize);
+                    product.setInnpageNumber(pageNum);
+                    products.add(product);
+                }
+            }
         }
         return products;
     }
 
     private void submit(List<Product> products) {
-        SimpleDateFormat format = new SimpleDateFormat("yyyyMMddHHmmSS");
-        String baseName = format.format(new Date());
-        String orderDescName = genOrderDesc(products, baseName);
-        String submitOrderDescName = genSubmitOrderDesc(baseName, orderDescName);
-        try {
-            Thread.sleep(100000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        FTPHelper ftpHelper = FTPHelper.getInstance();
-        ftpHelper.connect();
-        ftpHelper.upload(orderDescName);
-        ftpHelper.upload(submitOrderDescName);
-        ftpHelper.disconnect();
+        if (products.size() > 0) {
+            SimpleDateFormat format = new SimpleDateFormat("yyyyMMddHHmmSS");
+            String baseName = format.format(new Date());
+            String orderDescName = genOrderDesc(products, baseName);
+            String submitOrderDescName = genSubmitOrderDesc(baseName, orderDescName);
 
-        new File(orderDescName).deleteOnExit();
-        new File(submitOrderDescName).deleteOnExit();
+            FTPHelper ftpHelper = FTPHelper.getInstance(pBar);
+            appendLog("上传：" + orderDescName);
+            ftpHelper.upload(orderDescName);
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            appendLog("上传：" + submitOrderDescName);
+            ftpHelper.upload(submitOrderDescName);
+
+            appendLog("创建订单：" + products);
+
+            products.clear();
+            new File(orderDescName).deleteOnExit();
+            new File(submitOrderDescName).deleteOnExit();
+
+        } else {
+            appendLog("该订单失败");
+        }
     }
 
     private String genOrderDesc(List<Product> products, String baseName) {
@@ -229,10 +282,11 @@ public class Main extends JFrame {
     public String genSubmitOrderDesc(String baseName, String orderCustSeqs) {
 
         SubmitOrdersDesc obj = new SubmitOrdersDesc();
-        obj.setOrderName(OrderDesc.PREFIX + baseName);
+        obj.setOrderName(baseName);
         String custSequence = OrderDesc.PREFIX + "submit_orders_desc_" + baseName + ".xml";
-        obj.setCustSequence(OrderDesc.PREFIX + custSequence);
+        obj.setCustSequence(custSequence);
         obj.setOrderCustSeqs(orderCustSeqs);
+        obj.setReciverdate(new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
         try {
             JAXBContext context = JAXBContext.newInstance(SubmitOrdersDesc.class);
             Marshaller marshaller = context.createMarshaller();

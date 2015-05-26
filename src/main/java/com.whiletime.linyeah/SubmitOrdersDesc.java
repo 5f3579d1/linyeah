@@ -39,19 +39,19 @@ public class SubmitOrdersDesc {
     private String orderCustSeqs;
 
     @XmlElement(name = "PrintMarkOrder")
-    private String printMarkOrder;
+    private String printMarkOrder = "加急";
 
     @XmlElement(name = "ReciverName")
-    private String reciverName;
+    private String reciverName = "运营部";
 
     @XmlElement(name = "ReciverExpress")
-    private String reciverExpress;
+    private String reciverExpress = "汇通";
 
     @XmlElement(name = "reciverAddress")
-    private String reciverAddress;
+    private String reciverAddress = "浙江省杭州市";
 
     @XmlElement(name = "reciverMobile")
-    private String reciverMobile;
+    private String reciverMobile = "18668006480";
 
     /**
      * 要求收货日期(最早为下单日后延一天)
@@ -65,8 +65,7 @@ public class SubmitOrdersDesc {
      * 3:(19pm-24pm)
      */
     @XmlElement(name = "ReciverTime")
-    private String reciverTime;
-
+    private String reciverTime = "1";
 
     public void setOrderName(String orderName) {
         this.orderName = OrderDesc.PREFIX + orderName;
@@ -80,4 +79,7 @@ public class SubmitOrdersDesc {
         this.orderCustSeqs = orderCustSeqs;
     }
 
+    public void setReciverdate(String reciverdate) {
+        this.reciverdate = reciverdate;
+    }
 }

@@ -4,6 +4,12 @@ apply plugin: 'idea'
 
 mainClassName = "com.whiletime.linyeah.Main"
 
+jar {
+    manifest {
+        attributes 'Main-Class': 'com.whiletime.linyeah.Main'
+    }
+}
+
 repositories {
     mavenLocal()
     mavenCentral()
