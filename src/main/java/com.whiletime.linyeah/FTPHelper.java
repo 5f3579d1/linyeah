@@ -9,7 +9,7 @@ import java.io.*;
 /**
  * Created by k on 5/25/15.
  */
-public class FTPHelper {
+public class FTPHelper implements FileOperate {
 
     private static FTPHelper instance = null;
 
@@ -46,7 +46,13 @@ public class FTPHelper {
                 ftpClient.addProtocolCommandListener(new PrintCommandListener(new PrintWriter(System.out), true));
 
             ftpClient.setControlEncoding("UTF-8");
-//            ftpClient.enterLocalPassiveMode();
+            ftpClient.enterLocalPassiveMode();
+            int timeout = 10 * 60 * 1000;
+            ftpClient.setDataTimeout(timeout);
+            ftpClient.setConnectTimeout(timeout);
+            ftpClient.setDefaultTimeout(timeout);
+            ftpClient.setControlKeepAliveTimeout(timeout);
+            ftpClient.setControlKeepAliveReplyTimeout(timeout);
         }
         return instance;
     }
@@ -60,7 +66,7 @@ public class FTPHelper {
         }
     }
 
-    public boolean upload(String path) {
+    public boolean deal(String path) {
 
         connect();
 
@@ -77,7 +83,7 @@ public class FTPHelper {
 
             String remoteFile = localFile.getName();
             BufferedOutputStream outputStream = new BufferedOutputStream(ftpClient.storeFileStream(remoteFile));
-            System.err.println("上传：" + localFile.getName());
+            System.err.println("上传：" + remoteFile);
 
             int read;
             byte[] bytesIn = new byte[8196];
@@ -91,8 +97,7 @@ public class FTPHelper {
             outputStream.close();
             inputStream.close();
 
-            return ftpClient.completePendingCommand();
-
+            return true;
         } catch (IOException e) {
             e.printStackTrace();
         } finally {

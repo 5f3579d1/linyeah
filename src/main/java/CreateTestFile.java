@@ -1,5 +1,3 @@
-package com.whiletime.linyeah;
-
 import java.io.*;
 import java.util.Random;
 

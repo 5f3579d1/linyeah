@@ -1,6 +1,8 @@
 package com.whiletime.linyeah;
 
 import com.itextpdf.text.pdf.PdfReader;
+import com.linyeah.erp.orderdescschema.OrderDesc;
+import com.linyeah.erp.ordersubmittemp.SubmitOrdersDesc;
 
 import javax.swing.*;
 import javax.swing.text.BadLocationException;
@@ -8,13 +10,18 @@ import javax.swing.text.StyledDocument;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
+import javax.xml.datatype.DatatypeConfigurationException;
+import javax.xml.datatype.DatatypeFactory;
+import javax.xml.datatype.XMLGregorianCalendar;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
 
 /**
@@ -24,8 +31,13 @@ import java.util.List;
  */
 public class Main extends JFrame {
 
+    private static final String PREFIX = "WSG_";
     private JProgressBar pBar;
     private StyledDocument document;
+
+    private final String userName = "YiEdJgfgRXU=";
+    private final String password = "UQ3xBiJfxrJz5q5utMGx1A==";
+    private final String authtokenCode = "123456";
 
     private boolean deleleXMLFile = false;
 
@@ -105,8 +117,10 @@ public class Main extends JFrame {
     }
 
     public static void main(String[] args) {
-        Main main = new Main();
-        main.setVisible(true);
+        SwingUtilities.invokeLater(() -> {
+            Main main = new Main();
+            main.setVisible(true);
+        });
     }
 
     public void start(String path) {
@@ -121,7 +135,6 @@ public class Main extends JFrame {
                 if (isMultiple(userFile))
                     start(userFile);
                 else if (userFile.isDirectory()) {
-                    appendLog("用户：" + userFile.getName());
                     if (i <= 15) {
                         addProducts(products, userFile, false);
                         i++;
@@ -163,11 +176,10 @@ public class Main extends JFrame {
 
     private boolean isMultiple(File directory) {
         File[] files = directory.listFiles();
-        if (files != null) {
+        if (files != null)
             for (File file : files)
                 if (file.isDirectory())
                     return true;
-        }
         return false;
     }
 
@@ -202,33 +214,35 @@ public class Main extends JFrame {
 
             if (cover != null && inner != null) {
 
-                FTPHelper ftpHelper = FTPHelper.getInstance(pBar);
+                String filename;
+                if (split)
+                    filename = userFile.getParentFile().getName() + userFile.getName();
+                else
+                    filename = userFile.getName();
+
+                appendLog("用户：" + filename);
+
+                FileOperate operate = FileOperateFactory.getInstance(null, pBar);
                 appendLog("上传：" + cover);
-                boolean cc = ftpHelper.upload(userFile.getPath() + "/" + cover);
+                boolean cc = operate.deal(userFile.getPath() + "/" + cover);
                 appendLog("上传：" + inner);
-                boolean ic = ftpHelper.upload(userFile.getPath() + "/" + inner);
+                boolean ic = operate.deal(userFile.getPath() + "/" + inner);
 
                 if (cc && ic) {
 
-                    Product product = new Product();
-                    if (split)
-                        product.setName(userFile.getParentFile().getName());
-                    else
-                        product.setName(userFile.getName());
-
+                    OrderDesc.Products.Product product = new OrderDesc.Products.Product();
                     product.setCoverFile(cover);
-                    product.setCoverFileSize(coverSize);
+                    product.setCoverFileSize(coverSize + "");
                     product.setInnerFile(inner);
-                    product.setInnerFileSize(innerSize);
-                    product.setInnpageNumber(pageNum);
+                    product.setInnerFileSize(innerSize + "");
+                    product.setInnpageNumber(new BigInteger(pageNum + ""));
 
-                    String orderDescName = genOrderDesc(product, userFile.getName().replace(" ", "_"));
+                    String orderDescName = genOrderDesc(product, filename.replace(" ", "_"));
                     appendLog("上传：" + orderDescName);
-                    ftpHelper.upload(orderDescName);
                     if (deleleXMLFile)
                         new File(orderDescName).deleteOnExit();
 
-                    orderCustSeqs.add(orderDescName);
+                    orderCustSeqs.add(orderDescName.substring(0, orderDescName.length() - 4));
                 }
             }
         }
@@ -242,10 +256,6 @@ public class Main extends JFrame {
             String baseName = format.format(new Date());
             String submitOrderDescName = genSubmitOrderDesc(baseName, orderCustSeqs);
 
-            FTPHelper ftpHelper = FTPHelper.getInstance(pBar);
-            appendLog("上传：" + submitOrderDescName);
-            ftpHelper.upload(submitOrderDescName);
-
             appendLog("创建订单：" + orderCustSeqs);
 
             orderCustSeqs.clear();
@@ -257,24 +267,50 @@ public class Main extends JFrame {
         }
     }
 
-    private String genOrderDesc(Product product, String name) {
-        String filename = OrderDesc.PREFIX + name + ".xml";
+    private String genOrderDesc(OrderDesc.Products.Product product, String name) {
 
-        OrderDesc orderDesc = new OrderDesc();
-        List<Product> products = new ArrayList<>();
-        products.add(product);
-        orderDesc.setProducts(products);
+        String filename = PREFIX + name + ".xml";
+
+        OrderDesc obj = new OrderDesc();
+
+        obj.setAuthUserName(userName);
+        obj.setAuthPassword(password);
+        obj.setAuthtokenCode(authtokenCode);
+        obj.setProductName("胶装书");
+        obj.setOperationCode("0002");
+        obj.setCustSequence(filename.substring(0, filename.length() - 4));
+
+        product.setSequence(new BigInteger("1"));
+        product.setProdCode("0218");
+        product.setProdName("胶装书");
+        product.setProdWidth(new BigInteger("210"));
+        product.setProdHeight(new BigInteger("148"));
+        product.setProdNumber(new BigInteger("1"));
+        product.setPrintMark("胶装书");
+        product.setBleeding(new BigInteger("0"));
+        product.setCustSizeFlag("N");
+        product.setHasCover("Y");
+        product.setCovMatriCode("ZZ0007");
+        product.setCovSinOrDblSide("1");
+        product.setCovpageColor("1");
+        product.setCovPrtProcesse1("YH043-YHS0146");
+        product.setCovPrtProcesse2("");
+        product.setCovPrtProcesse3("");
+        product.setInnMatriCode("ZZ0005");
+        product.setInnSinOrDblSide(new BigInteger("1"));
+        product.setInnpageColor(new BigInteger("1"));
+        product.setInnPrtProcesse1("YH043-YHS0146");
+        product.setInnPrtProcesse2("");
+        product.setInnPrtProcesse3("");
+
+        OrderDesc.Products products = new OrderDesc.Products();
+        products.getOrderItemGroup().add(product);
+        obj.setProducts(products);
 
         try {
             JAXBContext context = JAXBContext.newInstance(OrderDesc.class);
             Marshaller marshaller = context.createMarshaller();
-            marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
-            marshaller.setProperty(Marshaller.JAXB_FRAGMENT, false);
-
-            OrderDesc obj = new OrderDesc();
-            obj.setCustSequence(filename);
-            obj.setProducts(products);
-
+            marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
             marshaller.marshal(obj, new File(filename));
         } catch (JAXBException e) {
             e.printStackTrace();
@@ -285,27 +321,44 @@ public class Main extends JFrame {
     public String genSubmitOrderDesc(String baseName, List<String> orderCustSeqs) {
 
         SubmitOrdersDesc obj = new SubmitOrdersDesc();
+
+        obj.setAuthUserName(userName);
+        obj.setAuthPassword(password);
+        obj.setAuthtokenCode(authtokenCode);
+        obj.setOperationCode("0003");
+        obj.setPrintMarkOrder("加急");
+        obj.setReciverName("运营部");
+        obj.setReciverProvince("浙江省");
+        obj.setReciverExpress("汇通");
+        obj.setReciverAddress("浙江省杭州市");
+        obj.setReciverMobile("18668006480");
+        obj.setReciverTime("1");
+
         obj.setOrderName(baseName);
-        String custSequence = OrderDesc.PREFIX + baseName + ".xml";
-        obj.setCustSequence(custSequence);
+        String custSequence = PREFIX + baseName + ".xml";
+        obj.setCustSequence(custSequence.substring(0, custSequence.length() - 4));
 
         StringBuilder custSeqsStr = new StringBuilder();
         int size = orderCustSeqs.size();
         for (int i = 0; i < size; i++)
             if (i != size - 1)
-                custSeqsStr.append(orderCustSeqs.get(i) + ",");
+                custSeqsStr.append(orderCustSeqs.get(i)).append(",");
             else
                 custSeqsStr.append(orderCustSeqs.get(i));
         obj.setOrderCustSeqs(custSeqsStr.toString());
 
-        obj.setReciverdate(new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
         try {
+
+            GregorianCalendar gregorianCalendar = new GregorianCalendar();
+            gregorianCalendar.setTime(new Date());
+            XMLGregorianCalendar calendar = DatatypeFactory.newInstance().newXMLGregorianCalendar(gregorianCalendar);
+            obj.setReciverdate(calendar);
+
             JAXBContext context = JAXBContext.newInstance(SubmitOrdersDesc.class);
             Marshaller marshaller = context.createMarshaller();
             marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
-            marshaller.setProperty(Marshaller.JAXB_FRAGMENT, false);
             marshaller.marshal(obj, new File(custSequence));
-        } catch (JAXBException e) {
+        } catch (JAXBException | DatatypeConfigurationException e) {
             e.printStackTrace();
         }
         return custSequence;
