@@ -27,6 +27,8 @@ public class Main extends JFrame {
     private JProgressBar pBar;
     private StyledDocument document;
 
+    private boolean deleleXMLFile = false;
+
     private String log;
     Runnable updateLog = () -> {
         try {
@@ -112,7 +114,7 @@ public class Main extends JFrame {
         File[] files = root.listFiles();
 
         int i = 0;
-        List<Product> products = new ArrayList<>();
+        List<String> products = new ArrayList<>();
         if (files != null)
             for (File userFile : files) {
 
@@ -141,21 +143,21 @@ public class Main extends JFrame {
         File[] files = splitFile.listFiles();
 
         int i = 0;
-        List<Product> products = new ArrayList<>();
+        List<String> orderCustSeqs = new ArrayList<>();
         if (files != null)
             for (File file : files) {
                 if (file.isDirectory())
                     if (i <= 15) {
-                        addProducts(products, file, true);
+                        addProducts(orderCustSeqs, file, true);
                         i++;
                     } else {
                         i = 0;
-                        submit(products);
+                        submit(orderCustSeqs);
                     }
             }
 
-        if (products.size() > 0)
-            submit(products);
+        if (orderCustSeqs.size() > 0)
+            submit(orderCustSeqs);
 
     }
 
@@ -169,7 +171,7 @@ public class Main extends JFrame {
         return false;
     }
 
-    private List<Product> addProducts(List<Product> products, File userFile, boolean split) {
+    private List<String> addProducts(List<String> orderCustSeqs, File userFile, boolean split) {
 
         String cover = null;
         String inner = null;
@@ -214,52 +216,53 @@ public class Main extends JFrame {
                     else
                         product.setName(userFile.getName());
 
-                    product.setSequence(products.size() + 1);
                     product.setCoverFile(cover);
                     product.setCoverFileSize(coverSize);
                     product.setInnerFile(inner);
                     product.setInnerFileSize(innerSize);
                     product.setInnpageNumber(pageNum);
-                    products.add(product);
+
+                    String orderDescName = genOrderDesc(product, userFile.getName().replace(" ", "_"));
+                    appendLog("上传：" + orderDescName);
+                    ftpHelper.upload(orderDescName);
+                    if (deleleXMLFile)
+                        new File(orderDescName).deleteOnExit();
+
+                    orderCustSeqs.add(orderDescName);
                 }
             }
         }
-        return products;
+        return orderCustSeqs;
     }
 
-    private void submit(List<Product> products) {
-        if (products.size() > 0) {
+    private void submit(List<String> orderCustSeqs) {
+        if (orderCustSeqs.size() > 0) {
+
             SimpleDateFormat format = new SimpleDateFormat("yyyyMMddHHmmSS");
             String baseName = format.format(new Date());
-            String orderDescName = genOrderDesc(products, baseName);
-            String submitOrderDescName = genSubmitOrderDesc(baseName, orderDescName);
+            String submitOrderDescName = genSubmitOrderDesc(baseName, orderCustSeqs);
 
             FTPHelper ftpHelper = FTPHelper.getInstance(pBar);
-            appendLog("上传：" + orderDescName);
-            ftpHelper.upload(orderDescName);
-            try {
-                Thread.sleep(3000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
             appendLog("上传：" + submitOrderDescName);
             ftpHelper.upload(submitOrderDescName);
 
-            appendLog("创建订单：" + products);
+            appendLog("创建订单：" + orderCustSeqs);
 
-            products.clear();
-            new File(orderDescName).deleteOnExit();
-            new File(submitOrderDescName).deleteOnExit();
+            orderCustSeqs.clear();
+            if (deleleXMLFile)
+                new File(submitOrderDescName).deleteOnExit();
 
         } else {
             appendLog("该订单失败");
         }
     }
 
-    private String genOrderDesc(List<Product> products, String baseName) {
-        String filename = OrderDesc.PREFIX + "order_desc_" + baseName + ".xml";
+    private String genOrderDesc(Product product, String name) {
+        String filename = OrderDesc.PREFIX + name + ".xml";
 
         OrderDesc orderDesc = new OrderDesc();
+        List<Product> products = new ArrayList<>();
+        products.add(product);
         orderDesc.setProducts(products);
 
         try {
@@ -279,13 +282,22 @@ public class Main extends JFrame {
         return filename;
     }
 
-    public String genSubmitOrderDesc(String baseName, String orderCustSeqs) {
+    public String genSubmitOrderDesc(String baseName, List<String> orderCustSeqs) {
 
         SubmitOrdersDesc obj = new SubmitOrdersDesc();
         obj.setOrderName(baseName);
-        String custSequence = OrderDesc.PREFIX + "submit_orders_desc_" + baseName + ".xml";
+        String custSequence = OrderDesc.PREFIX + baseName + ".xml";
         obj.setCustSequence(custSequence);
-        obj.setOrderCustSeqs(orderCustSeqs);
+
+        StringBuilder custSeqsStr = new StringBuilder();
+        int size = orderCustSeqs.size();
+        for (int i = 0; i < size; i++)
+            if (i != size - 1)
+                custSeqsStr.append(orderCustSeqs.get(i) + ",");
+            else
+                custSeqsStr.append(orderCustSeqs.get(i));
+        obj.setOrderCustSeqs(custSeqsStr.toString());
+
         obj.setReciverdate(new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
         try {
             JAXBContext context = JAXBContext.newInstance(SubmitOrdersDesc.class);

@@ -10,7 +10,7 @@ import java.util.List;
 @XmlAccessorType(XmlAccessType.FIELD)
 public class OrderDesc {
 
-    static final public String PREFIX = "WSG_DJD_";
+    static final public String PREFIX = "WSG_";
 
     @XmlElement(name = "AuthUserName")
     public static String authUserName = "YiEdJgfgRXU";
@@ -57,7 +57,7 @@ class Product {
     private String name;
 
     @XmlElement(name = "Sequence")
-    private int sequence;
+    private int sequence = 1;
 
     @XmlElement(name = "ProdCode")
     private int prodCode = 2018;
@@ -81,7 +81,7 @@ class Product {
     private String printMark = "胶装书";
 
     @XmlElement(name = "Bleeding")
-    private String bleeding = "";
+    private String bleeding = "0";
 
     @XmlElement(name = "CustSizeFlag")
     private String custSizeFlag = "N";
@@ -157,10 +157,6 @@ class Product {
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public void setSequence(int sequence) {
-        this.sequence = sequence;
     }
 
     public void setInnpageNumber(int innpageNumber) {

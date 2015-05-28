@@ -46,7 +46,7 @@ public class FTPHelper {
                 ftpClient.addProtocolCommandListener(new PrintCommandListener(new PrintWriter(System.out), true));
 
             ftpClient.setControlEncoding("UTF-8");
-            ftpClient.enterLocalPassiveMode();
+//            ftpClient.enterLocalPassiveMode();
         }
         return instance;
     }
@@ -91,7 +91,7 @@ public class FTPHelper {
             outputStream.close();
             inputStream.close();
 
-            return true;//ftpClient.completePendingCommand();
+            return ftpClient.completePendingCommand();
 
         } catch (IOException e) {
             e.printStackTrace();
