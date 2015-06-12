@@ -4,17 +4,12 @@ import com.itextpdf.text.pdf.PdfReader;
 import com.linyeah.erp.orderdescschema.OrderDesc;
 import com.linyeah.erp.ordersubmittemp.SubmitOrdersDesc;
 
-import javax.swing.*;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.StyledDocument;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
-import java.awt.*;
-import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
@@ -29,98 +24,18 @@ import java.util.List;
  * TODO: 套数选择
  * Created by k on 5/25/15.
  */
-public class Main extends JFrame {
+public class Main {
 
-    private static final String PREFIX = "WSG_";
-    private JProgressBar pBar;
-    private StyledDocument document;
+    public static final String PREFIX = "WSG_";
 
     private final String userName = "YiEdJgfgRXU=";
     private final String password = "UQ3xBiJfxrJz5q5utMGx1A==";
-    private final String authtokenCode = "123456";
+    private final String authTokenCode = "123456";
 
-    private boolean deleleXMLFile = false;
-
-    private String log;
-    Runnable updateLog = () -> {
-        try {
-            document.insertString(document.getLength(), "\n" + log, null);
-        } catch (BadLocationException e) {
-            e.printStackTrace();
-        }
-    };
-
-    public Main() {
-
-        JPanel basic = new JPanel();
-        basic.setLayout(new BoxLayout(basic, BoxLayout.Y_AXIS));
-        add(basic);
-
-        pBar = new JProgressBar();
-        pBar.setStringPainted(true);
-        JPanel topPanel = new JPanel(new BorderLayout(0, 0));
-        topPanel.setMaximumSize(new Dimension(450, 0));
-        topPanel.add(pBar);
-
-        JSeparator separator = new JSeparator();
-        separator.setForeground(Color.gray);
-        topPanel.add(separator, BorderLayout.SOUTH);
-        basic.add(topPanel);
-
-        JPanel textPanel = new JPanel(new BorderLayout());
-        textPanel.setBorder(BorderFactory.createEmptyBorder(15, 25, 15, 25));
-
-        JTextPane textPane = new JTextPane();
-        textPane.setText("选择订单目录");
-        document = textPane.getStyledDocument();
-        textPane.setEditable(false);
-        textPanel.add(new JScrollPane(textPane));
-
-        basic.add(textPanel);
-
-        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-
-        JButton close = new JButton("关闭");
-        close.setMnemonic(KeyEvent.VK_C);
-        close.addActionListener(event -> System.exit(0));
-
-        JButton openButton = new JButton("选择目录");
-        openButton.addActionListener(event -> selectRootDirector());
-        bottom.add(openButton);
-        bottom.add(close);
-        basic.add(bottom);
-
-        setTitle("提交订单");
-        setSize(new Dimension(450, 350));
-        setResizable(true);
-        setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-        setLocationRelativeTo(null);
-
-    }
-
-    private void selectRootDirector() {
-        final JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        int returnVal = fileChooser.showOpenDialog(this);
-        if (returnVal == JFileChooser.APPROVE_OPTION) {
-            String path = fileChooser.getSelectedFile().getPath();
-            new Thread(() -> {
-                appendLog("当前目录：" + path);
-                start(path);
-            }).start();
-        }
-    }
-
-    private void appendLog(String log) {
-        this.log = log;
-        SwingUtilities.invokeLater(updateLog);
-    }
+    private boolean deleteXMLFile = false;
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            Main main = new Main();
-            main.setVisible(true);
-        });
+        new Main().start(".");
     }
 
     public void start(String path) {
@@ -147,8 +62,6 @@ public class Main extends JFrame {
 
         if (products.size() > 0)
             submit(products);
-
-        appendLog("完成");
     }
 
     private void start(File splitFile) {
@@ -220,26 +133,21 @@ public class Main extends JFrame {
                 else
                     filename = userFile.getName();
 
-                appendLog("用户：" + filename);
 
-                FileOperate operate = FileOperateFactory.getInstance(null, pBar);
-                appendLog("上传：" + cover);
-                boolean cc = operate.deal(userFile.getPath() + "/" + cover);
-                appendLog("上传：" + inner);
-                boolean ic = operate.deal(userFile.getPath() + "/" + inner);
+                boolean cc = CopyToLocal.getInstance().deal(userFile.getPath() + "/" + cover);
+                boolean ic = CopyToLocal.getInstance().deal(userFile.getPath() + "/" + inner);
 
                 if (cc && ic) {
 
                     OrderDesc.Products.Product product = new OrderDesc.Products.Product();
-                    product.setCoverFile(cover);
+                    product.setCoverFile(PREFIX + cover);
                     product.setCoverFileSize(coverSize + "");
-                    product.setInnerFile(inner);
+                    product.setInnerFile(PREFIX + inner);
                     product.setInnerFileSize(innerSize + "");
                     product.setInnpageNumber(new BigInteger(pageNum + ""));
 
                     String orderDescName = genOrderDesc(product, filename.replace(" ", "_"));
-                    appendLog("上传：" + orderDescName);
-                    if (deleleXMLFile)
+                    if (deleteXMLFile)
                         new File(orderDescName).deleteOnExit();
 
                     orderCustSeqs.add(orderDescName.substring(0, orderDescName.length() - 4));
@@ -255,15 +163,9 @@ public class Main extends JFrame {
             SimpleDateFormat format = new SimpleDateFormat("yyyyMMddHHmmSS");
             String baseName = format.format(new Date());
             String submitOrderDescName = genSubmitOrderDesc(baseName, orderCustSeqs);
-
-            appendLog("创建订单：" + orderCustSeqs);
-
             orderCustSeqs.clear();
-            if (deleleXMLFile)
+            if (deleteXMLFile)
                 new File(submitOrderDescName).deleteOnExit();
-
-        } else {
-            appendLog("该订单失败");
         }
     }
 
@@ -275,7 +177,7 @@ public class Main extends JFrame {
 
         obj.setAuthUserName(userName);
         obj.setAuthPassword(password);
-        obj.setAuthtokenCode(authtokenCode);
+        obj.setAuthtokenCode(authTokenCode);
         obj.setProductName("胶装书");
         obj.setOperationCode("0002");
         obj.setCustSequence(filename.substring(0, filename.length() - 4));
@@ -290,13 +192,13 @@ public class Main extends JFrame {
         product.setBleeding(new BigInteger("0"));
         product.setCustSizeFlag("N");
         product.setHasCover("Y");
-        product.setCovMatriCode("ZZ0007");
+        product.setCovMatriCode("ZZ0201");
         product.setCovSinOrDblSide("1");
         product.setCovpageColor("1");
         product.setCovPrtProcesse1("YH043-YHS0146");
         product.setCovPrtProcesse2("");
         product.setCovPrtProcesse3("");
-        product.setInnMatriCode("ZZ0005");
+        product.setInnMatriCode("ZZ0002");
         product.setInnSinOrDblSide(new BigInteger("1"));
         product.setInnpageColor(new BigInteger("1"));
         product.setInnPrtProcesse1("YH043-YHS0146");
@@ -324,14 +226,14 @@ public class Main extends JFrame {
 
         obj.setAuthUserName(userName);
         obj.setAuthPassword(password);
-        obj.setAuthtokenCode(authtokenCode);
+        obj.setAuthtokenCode(authTokenCode);
         obj.setOperationCode("0003");
         obj.setPrintMarkOrder("加急");
-        obj.setReciverName("运营部");
+        obj.setReciverName("丁缙东");
         obj.setReciverProvince("浙江省");
         obj.setReciverExpress("汇通");
         obj.setReciverAddress("浙江省杭州市");
-        obj.setReciverMobile("18668006480");
+        obj.setReciverMobile("13735462890");
         obj.setReciverTime("1");
 
         obj.setOrderName(baseName);
