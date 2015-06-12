@@ -34,57 +34,38 @@ public class Main {
 
     private boolean deleteXMLFile = false;
 
+    private static PaperType paper = PaperType.EGGSHELL;
+
     public static void main(String[] args) {
+        if (args.length != 0)
+            paper = PaperType.KRAFT;
+
         new Main().start(".");
     }
+
+    List<String> products = new ArrayList<>();
 
     public void start(String path) {
         File root = new File(path);
         File[] files = root.listFiles();
-
-        int i = 0;
-        List<String> products = new ArrayList<>();
         if (files != null)
             for (File userFile : files) {
-
                 if (isMultiple(userFile))
-                    start(userFile);
-                else if (userFile.isDirectory()) {
-                    if (i <= 15) {
-                        addProducts(products, userFile, false);
-                        i++;
-                    } else {
-                        i = 0;
-                        submit(products);
-                    }
-                }
+                    splitBook(userFile);
+                else if (userFile.isDirectory())
+                    addProducts(products, userFile, false);
             }
 
         if (products.size() > 0)
             submit(products);
     }
 
-    private void start(File splitFile) {
-
+    private void splitBook(File splitFile) {
         File[] files = splitFile.listFiles();
-
-        int i = 0;
-        List<String> orderCustSeqs = new ArrayList<>();
         if (files != null)
-            for (File file : files) {
+            for (File file : files)
                 if (file.isDirectory())
-                    if (i <= 15) {
-                        addProducts(orderCustSeqs, file, true);
-                        i++;
-                    } else {
-                        i = 0;
-                        submit(orderCustSeqs);
-                    }
-            }
-
-        if (orderCustSeqs.size() > 0)
-            submit(orderCustSeqs);
-
+                    addProducts(products, file, true);
     }
 
     private boolean isMultiple(File directory) {
@@ -97,6 +78,11 @@ public class Main {
     }
 
     private List<String> addProducts(List<String> orderCustSeqs, File userFile, boolean split) {
+
+        if (orderCustSeqs.size() >= 15) {
+            submit(orderCustSeqs);
+            orderCustSeqs.clear();
+        }
 
         String cover = null;
         String inner = null;
@@ -158,6 +144,7 @@ public class Main {
     }
 
     private void submit(List<String> orderCustSeqs) {
+
         if (orderCustSeqs.size() > 0) {
 
             SimpleDateFormat format = new SimpleDateFormat("yyyyMMddHHmmSS");
@@ -192,16 +179,21 @@ public class Main {
         product.setBleeding(new BigInteger("0"));
         product.setCustSizeFlag("N");
         product.setHasCover("Y");
-        product.setCovMatriCode("ZZ0201");
-        product.setCovSinOrDblSide("1");
-        product.setCovpageColor("1");
-        product.setCovPrtProcesse1("YH043-YHS0146");
+        product.setCovMatriCode(paper.getField());
+        product.setCovSinOrDblSide("0");
+
+        if (PaperType.KRAFT.equals(paper))
+            product.setCovpageColor("0");
+        else
+            product.setCovpageColor("1");
+
+        product.setCovPrtProcesse1("");
         product.setCovPrtProcesse2("");
         product.setCovPrtProcesse3("");
         product.setInnMatriCode("ZZ0002");
         product.setInnSinOrDblSide(new BigInteger("1"));
         product.setInnpageColor(new BigInteger("1"));
-        product.setInnPrtProcesse1("YH043-YHS0146");
+        product.setInnPrtProcesse1("");
         product.setInnPrtProcesse2("");
         product.setInnPrtProcesse3("");
 
@@ -232,7 +224,7 @@ public class Main {
         obj.setReciverName("丁缙东");
         obj.setReciverProvince("浙江省");
         obj.setReciverExpress("汇通");
-        obj.setReciverAddress("浙江省杭州市");
+        obj.setReciverAddress("浙江省杭州市余杭区仓前街道良睦路梦想小镇互联网村23号2楼时光书");
         obj.setReciverMobile("13735462890");
         obj.setReciverTime("1");
 
